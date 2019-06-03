@@ -95,7 +95,7 @@ void print_ent(t_ent *entity_list){
 }
 
 void print_all_rel(char *ent, t_ent *entity_list){
-    printf("RELAZIONI PUNTANTI %s\n", ent);
+    printf("\nRELAZIONI PUNTANTI %s\n", ent);
     t_ent *result = is_in_ent(ent, entity_list);
     t_ent *pnt = result;
     t_rel *relation_list = pnt->rel_list;
@@ -220,8 +220,38 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
 }
 
 
-int del_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
-
+void del_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
+    t_ent *dest_ent = is_in_ent(id_dest, *entity_list);
+     if(dest_ent != NULL){
+        t_rel *rel_list = dest_ent->rel_list;
+        t_rel *relation = is_in_rel(id_rel, rel_list);
+       if(relation != NULL){
+            t_orig *org_list = relation->orig_list;
+            t_orig *origin = is_in_origin(id_orig, org_list);
+            if(origin != NULL){
+                if(origin->prev == NULL && origin->next != NULL){
+                    //TODO: trovare un modo per risettare il puntatore all'ultimo elemento
+                    origin->next->prev = NULL;
+                    relation->orig_list = origin->next;
+                    free(origin);
+                } else if(origin->prev != NULL && origin->next == NULL){
+                    origin->prev->next = NULL;
+                    relation->last_orig_node = &(origin->prev);
+                    free(origin);
+                } else if(origin->prev != NULL && origin->next != NULL){
+                    //TODO: trovare un modo per risettare il puntatore all'ultimo elemento
+                    origin->prev->next = origin->next;
+                    origin->next->prev = origin->prev;
+                    free(origin);
+                } else if(origin->prev == NULL && origin->next == NULL){
+                    relation->orig_list = NULL;
+                    relation->last_orig_node = NULL;
+                    free(origin);
+                }
+                relation->counter = relation->counter - 1;
+            }
+        }
+    }
 }
 
 void report(){
@@ -235,14 +265,22 @@ int main() {
     add_ent("Luca", &entity_list);
     add_ent("Sofia", &entity_list);
     add_ent("Nicola", &entity_list);
+    print_ent(entity_list);
+
     add_rel("Giovanni", "Luca", "amico_di", &entity_list);
     add_rel("Sofia", "Luca", "amico_di", &entity_list);
-    add_rel("Giovanni", "Luca", "collega_di", &entity_list);
-    add_rel("Sofia", "Luca", "collega_di", &entity_list);
-    add_ent("Giuseppe", &entity_list);
-    add_rel("Giuseppe", "Giovanni", "amico_di", &entity_list);
+    add_rel("Nicola", "Luca", "amico_di", &entity_list);
+/*    add_rel("Giovanni", "Luca", "collega_di", &entity_list);
+    add_rel("Sofia", "Luca", "collega_di", &entity_list);*/
 
-    print_ent(entity_list);
-    print_all_rel("Luca", entity_list);
-    print_all_rel("Giovanni", entity_list);
+
+    del_rel("Nicola", "Luca", "amico_di", &entity_list);
+    //del_rel("Giovanni", "Luca", "amico_di", &entity_list);
+    printf("%s\n", (*(entity_list->next->rel_list->last_orig_node))->org_pnt->id_ent);
+
+
+    //add_rel("Nicola", "Luca", "amico_di", &entity_list);
+
+    //print_all_rel("Luca", entity_list);
+
 }
