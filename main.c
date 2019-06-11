@@ -3,15 +3,16 @@
 #include <malloc.h>
 #include <string.h>
 
+#define STR_DIM 50
+
 // STRUCTURES
 
 typedef struct orig_rel t_orig;
 typedef struct dest_rel t_dest;
 typedef struct rel t_rel;
 typedef struct entity t_ent;
-typedef struct rank t_rank;
-typedef struct rank_rel t_rank_rel;
-typedef struct rank_ent t_rank_ent;
+typedef struct global_rel t_global_rel;
+typedef struct rel_node t_rel_node;
 
 struct orig_rel{
     t_ent *org_pnt;
@@ -26,7 +27,7 @@ struct dest_rel{
 };
 
 struct rel{
-    char *id_rel;
+    char id_rel[STR_DIM];
     int counter;
     t_orig *orig_list;
     t_dest *dest_list;
@@ -37,35 +38,39 @@ struct rel{
 };
 
 struct entity {
-    char *id_ent;
+    char id_ent[STR_DIM];
     t_rel *rel_list;
     t_rel *last_rel_node;
     struct entity *next;
     struct entity *prev;
 };
 
-struct rank{
-    t_rank_rel *rank_list;
-    t_rank_rel *last_node;
+struct global_rel{
+    char id_rel[STR_DIM];
+    t_rel_node *rel_list;
+    t_rel_node *last_node;
+    struct global_rel *next;
+    struct global_rel *prev;
 };
 
-struct rank_rel{
-    char *id_rel;
+struct rel_node{
     int counter;
-    t_rank_ent *last_node;
-    t_rank_ent *ent_list;
-    struct rank_rel *next;
-};
-
-struct rank_ent{
-    t_ent *ent;
-    struct rank_ent *next;
+    char id_ent[STR_DIM];
+    struct rel_node *next;
+    struct rel_node *prev;
 };
 
 // GLOBAL VARIABLES
 
 t_ent **last_ent_node = NULL;
-t_rank *global_rank = NULL;
+t_global_rel *global_rel_list = NULL;
+t_global_rel *last_global_rel = NULL;
+
+void add_ent(char *id_ent, t_ent **entity_list);
+void del_ent(char *id_ent, t_ent **entity_list);
+void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list );
+void del_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list );
+void report();
 
 // UTILS FUNCTIONS
 
@@ -122,48 +127,218 @@ t_dest *is_in_dest(char *id_dest, t_dest *destination_list){
     return NULL;
 }
 
-t_rank_rel *is_in_rank(char *id_rel, t_rank_rel *rank_list){
-    if(rank_list != NULL){
-        t_rank_rel *pnt = rank_list;
-        do{
-            if(strcmp(pnt->id_rel, id_rel) == 0){
+t_global_rel *is_in_global_rel(char *id_rel){
+    t_global_rel *pnt = global_rel_list;
+    do{
+        if(strcmp(pnt->id_rel, id_rel)>0){
+            return pnt;
+        }
+        pnt = pnt->next;
+    }while (pnt != NULL);
+    return  NULL;
+}
+
+t_rel_node *is_in_global_rel_node(t_rel_node *relation, char *id_ent){
+    t_rel_node *pnt = relation;
+    if(pnt != NULL) {
+        do {
+            if (strcmp(pnt->id_ent, id_ent)>0) {
                 return pnt;
             }
             pnt = pnt->next;
-        }while (pnt != NULL);
+        } while (pnt != NULL);
     }
     return  NULL;
 }
 
-t_rank_rel *add_rank(char *id_rel){
-    if(global_rank == NULL){
-        t_rank *new_rank = (t_rank *)malloc(sizeof(t_rank));
-        new_rank->rank_list = (t_rank_rel *)malloc(sizeof(t_rank_rel));
-        new_rank->rank_list->id_rel = id_rel;
-        new_rank->rank_list->counter = 0;
-        new_rank->rank_list->ent_list = NULL;
-        new_rank->rank_list->last_node = NULL;
-        new_rank->rank_list->next = NULL;
-        new_rank->last_node = new_rank->rank_list;
-        global_rank = new_rank;
+/*void set_rel_in_global(t_rel *relation, char *id_ent){
+    if(global_rel_list == NULL){
+        global_rel_list = (t_global_rel *)malloc(sizeof(t_global_rel));
+        strcpy(global_rel_list->id_rel, relation->id_rel);
+        global_rel_list->rel_list = (t_rel_node *)malloc(sizeof(t_rel_node));
+        global_rel_list->rel_list->counter = relation->counter;
+        strcpy(global_rel_list->rel_list->id_ent, id_ent);
+        global_rel_list->rel_list->next = NULL;
+        global_rel_list->rel_list->prev = NULL;
+        global_rel_list->last_node = global_rel_list->rel_list;
+        global_rel_list->next = NULL;
+        last_global_rel = global_rel_list;
     } else{
-        t_rank_rel *rank_rel = is_in_rank(id_rel, global_rank->rank_list);
-        if(rank_rel == NULL){
-            t_rank_rel *new_rel = (t_rank_rel *)malloc(sizeof(t_rank_rel));
-            new_rel->id_rel = id_rel;
-            new_rel->counter = 0;
-            new_rel->ent_list = NULL;
-            new_rel->last_node = NULL;
+        t_global_rel *rel = is_in_global_rel(relation->id_rel);
+        if(rel == NULL){
+            t_global_rel *new_rel = (t_global_rel *)malloc(sizeof(t_global_rel));
+            strcpy(new_rel->id_rel, relation->id_rel);
+            new_rel->rel_list = (t_rel_node *)malloc(sizeof(t_rel_node));
+            new_rel->rel_list->counter = relation->counter;
+            strcpy(new_rel->rel_list->id_ent, id_ent);
+            new_rel->rel_list->next = NULL;
+            new_rel->rel_list->prev = NULL;
+            new_rel->last_node = new_rel->rel_list;
             new_rel->next = NULL;
-            global_rank->last_node->next = new_rel;
-            global_rank->last_node = global_rank->last_node->next;
+            last_global_rel->next = new_rel;
+            last_global_rel = last_global_rel->next;
+        } else{
+            t_rel_node *rel_node = is_in_global_rel_node(rel->rel_list, id_ent);
+            if( rel_node== NULL){
+                t_rel_node *new_node = (t_rel_node *)malloc(sizeof(t_rel_node));
+                new_node->counter = relation->counter;
+                strcpy(new_node->id_ent, id_ent);
+                new_node->next = NULL;
+                new_node->prev = rel->last_node;
+                rel->last_node->next = new_node;
+                rel->last_node = rel->last_node->next;
+            } else{
+                rel_node->counter = relation->counter;
+            }
         }
     }
-    return global_rank->last_node;
+}*/
+
+void set_rel_in_global(t_rel *relation, char *id_ent){
+    if(global_rel_list == NULL){
+        global_rel_list = (t_global_rel *)malloc(sizeof(t_global_rel));
+        strcpy(global_rel_list->id_rel, relation->id_rel);
+        global_rel_list->rel_list = (t_rel_node *)malloc(sizeof(t_rel_node));
+        global_rel_list->rel_list->counter = relation->counter;
+        strcpy(global_rel_list->rel_list->id_ent, id_ent);
+        global_rel_list->rel_list->next = NULL;
+        global_rel_list->rel_list->prev = NULL;
+        global_rel_list->last_node = global_rel_list->rel_list;
+        global_rel_list->next = NULL;
+        global_rel_list->prev = NULL;
+        last_global_rel = global_rel_list;
+    } else{
+        t_global_rel *rel = is_in_global_rel(relation->id_rel);
+
+        if(rel == NULL){
+            t_global_rel *new_rel = (t_global_rel *)malloc(sizeof(t_global_rel));
+            strcpy(new_rel->id_rel, relation->id_rel);
+            new_rel->rel_list = (t_rel_node *)malloc(sizeof(t_rel_node));
+            new_rel->rel_list->counter = relation->counter;
+            strcpy(new_rel->rel_list->id_ent, id_ent);
+            new_rel->rel_list->next = NULL;
+            new_rel->rel_list->prev = NULL;
+            new_rel->last_node = new_rel->rel_list;
+            new_rel->next = NULL;
+            new_rel->prev = last_global_rel;
+            last_global_rel->next = new_rel;
+            last_global_rel = last_global_rel->next;
+        } else{
+            if(rel->prev != NULL) {
+                if (strcmp(rel->prev->id_rel, relation->id_rel) != 0) {
+                    t_global_rel *new_rel = (t_global_rel *) malloc(sizeof(t_global_rel));
+                    strcpy(new_rel->id_rel, relation->id_rel);
+                    new_rel->rel_list = (t_rel_node *) malloc(sizeof(t_rel_node));
+                    new_rel->rel_list->counter = relation->counter;
+                    strcpy(new_rel->rel_list->id_ent, id_ent);
+                    new_rel->rel_list->next = NULL;
+                    new_rel->rel_list->prev = NULL;
+                    new_rel->last_node = new_rel->rel_list;
+                    new_rel->next = rel;
+                    new_rel->prev = rel->prev;
+                    rel->prev->next = new_rel;
+                    rel->next->prev = new_rel;
+                } else {
+                    t_rel_node *node = is_in_global_rel_node(rel->rel_list, id_ent);
+                    if(node == NULL && rel->last_node == NULL) {
+                        t_rel_node *new_node = (t_rel_node *) malloc(sizeof(t_rel_node));
+                        new_node->counter = relation->counter;
+                        strcpy(new_node->id_ent, id_ent);
+                        new_node->next = NULL;
+                        new_node->prev = NULL;
+                        rel->rel_list = new_node;
+                        rel->last_node = new_node;
+                    }else if(node == NULL && rel->last_node != NULL){
+                        t_rel_node *new_node = (t_rel_node *) malloc(sizeof(t_rel_node));
+                        new_node->counter = relation->counter;
+                        strcpy(new_node->id_ent, id_ent);
+                        new_node->next = NULL;
+                        new_node->prev = rel->last_node;
+                        rel->last_node = rel->last_node->next;
+                    } else if(node != NULL){
+                        if(node->prev != NULL){
+                            if(strcmp(node->prev->id_ent, id_ent) != 0){
+                                t_rel_node *new_node = (t_rel_node *) malloc(sizeof(t_rel_node));
+                                new_node->counter = relation->counter;
+                                strcpy(new_node->id_ent, id_ent);
+                                new_node->next = node;
+                                new_node->prev = node->prev;
+                                node->prev->next = new_node;
+                                node->next->prev = new_node;
+                            }else{
+                                node->counter = relation->counter;
+                            }
+                        } else{
+                            t_rel_node *new_node = (t_rel_node *) malloc(sizeof(t_rel_node));
+                            new_node->counter = relation->counter;
+                            strcpy(new_node->id_ent, id_ent);
+                            new_node->next = node;
+                            new_node->prev = NULL;
+                            rel->rel_list = new_node;
+                        }
+                    }
+                }
+            }else{
+                t_global_rel *new_rel = (t_global_rel *) malloc(sizeof(t_global_rel));
+                strcpy(new_rel->id_rel, relation->id_rel);
+                new_rel->rel_list = (t_rel_node *) malloc(sizeof(t_rel_node));
+                new_rel->rel_list->counter = relation->counter;
+                strcpy(new_rel->rel_list->id_ent, id_ent);
+                new_rel->rel_list->next = NULL;
+                new_rel->rel_list->prev = NULL;
+                new_rel->last_node = new_rel->rel_list;
+                new_rel->prev = NULL;
+                new_rel->next = rel;
+                rel->prev = new_rel;
+                global_rel_list = new_rel;
+            }
+        }
+    }
 }
 
+void set_global_rel_counter(t_rel *relation, char *id_ent){
+    t_global_rel *rel = is_in_global_rel(relation->id_rel);
+    if(rel != NULL){
+        t_rel_node *node = is_in_global_rel_node(rel->rel_list, id_ent);
+        if(node != NULL){
+            node->counter = relation->counter;
+        }
+    }
+}
 
-void print_ent(t_ent *entity_list){
+void del_rel_global_node(char *id_ent){
+    if(global_rel_list != NULL) {
+        t_global_rel *pnt = global_rel_list;
+        do {
+            t_rel_node *rel_list = pnt->rel_list;
+            if(rel_list != NULL){
+                t_rel_node *rel = is_in_global_rel_node(rel_list, id_ent);
+                if(rel != NULL){
+                    if(rel->prev == NULL && rel->next == NULL){
+                        pnt->rel_list = NULL;
+                        pnt->last_node = NULL;
+                        free(rel);
+                    }else if(rel->prev == NULL && rel->next != NULL){
+                        pnt->rel_list = rel->next;
+                        rel->next->prev = NULL;
+                        free(rel);
+                    } else if(rel->prev != NULL && rel->next == NULL){
+                        pnt->last_node = pnt->last_node->prev;
+                        rel->prev->next = NULL;
+                        free(rel);
+                    } else if(rel->prev != NULL && rel->next != NULL){
+                        rel->prev->next = rel->next;
+                        rel->next->prev = rel->prev;
+                        free(rel);
+                    }
+                }
+            }
+            pnt = pnt->next;
+        } while (pnt != NULL);
+    }
+}
+
+/*void print_ent(t_ent *entity_list){
     t_ent *pnt = entity_list;
     printf("O<- ");
     if(pnt != NULL){
@@ -198,20 +373,16 @@ void print_all_rel(char *ent, t_ent *entity_list){
         }while (origin_list != NULL);
         relation_list = relation_list->next;
     }while (relation_list != NULL);
-}
+}*/
 
 // REQUIRED FUNCTIONS
-void add_ent(char *id_ent, t_ent **entity_list);
-void del_ent(char *id_ent, t_ent **entity_list);
-void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list );
-void del_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list );
-void report();
+
 
 void add_ent(char *id_ent, t_ent **entity_list){
     t_ent *result = is_in_ent(id_ent, *entity_list);
     if(result == NULL && last_ent_node == NULL) {
         t_ent *new_node = (t_ent *) malloc(sizeof(t_ent));
-        new_node->id_ent = id_ent;
+        strcpy(new_node->id_ent, id_ent);
         new_node->rel_list = NULL;
         new_node->last_rel_node = NULL;
         new_node->next = NULL;
@@ -220,7 +391,7 @@ void add_ent(char *id_ent, t_ent **entity_list){
         last_ent_node = entity_list;
     } else if(result == NULL && last_ent_node != NULL){
         t_ent *new_node = (t_ent *) malloc(sizeof(t_ent));
-        new_node->id_ent = id_ent;
+        strcpy(new_node->id_ent, id_ent);
         new_node->rel_list = NULL;
         new_node->last_rel_node = NULL;
         new_node->next = NULL;
@@ -234,21 +405,64 @@ void del_ent(char *id_ent, t_ent **entity_list){
     t_ent *result = is_in_ent(id_ent, *entity_list);
     if(result != NULL){
         t_ent *node_to_del = result;
-        t_ent *prev_node = node_to_del->prev;
-        t_ent *next_node = node_to_del->next;
+
         //TODO: eliminare tutti i rifermenti al nodo eliminato
-        if(prev_node == NULL){
-            *entity_list = next_node;
-            next_node->prev = NULL;
+        t_rel *rel_pnt = result->rel_list;
+        if(rel_pnt != NULL) {
+            do {
+                t_dest *dest_pnt = rel_pnt->dest_list;
+                if (dest_pnt != NULL) {
+                    do {
+                        t_rel *pointed_rel = is_in_rel(rel_pnt->id_rel, dest_pnt->dest_pnt->rel_list);
+                        if (pointed_rel != NULL) {
+                            t_orig *pointed_org = is_in_origin(id_ent, pointed_rel->orig_list);
+                            if (pointed_org != NULL) {
+                                if (pointed_org->prev == NULL && pointed_org->next == NULL) {
+                                    pointed_rel->orig_list = NULL;
+                                    pointed_rel->last_orig_node = NULL;
+                                    free(pointed_org);
+                                } else if (pointed_org->prev == NULL && pointed_org->next != NULL) {
+                                    pointed_org->next->prev = NULL;
+                                    pointed_rel->orig_list = pointed_org->next;
+                                    free(pointed_org);
+                                } else if (pointed_org->prev != NULL && pointed_org->next == NULL) {
+                                    pointed_rel->last_orig_node = pointed_rel->last_orig_node->prev;
+                                    pointed_org->prev->next = NULL;
+                                    free(pointed_org);
+                                } else if (pointed_org->prev != NULL && pointed_org->next != NULL) {
+                                    pointed_org->prev->next = pointed_org->next;
+                                    pointed_org->next->prev = pointed_org->prev;
+                                    free(pointed_org);
+                                }
+                                pointed_rel->counter = pointed_rel->counter - 1;
+                                set_global_rel_counter(pointed_rel, dest_pnt->dest_pnt->id_ent);
+                            }
+                        }
+                        dest_pnt = dest_pnt->next;
+                    } while (dest_pnt != NULL);
+                }
+                rel_pnt = rel_pnt->next;
+            } while (rel_pnt != NULL);
+        }
+
+        del_rel_global_node(id_ent);
+
+        if(node_to_del->prev == NULL && node_to_del->next == NULL){
+            *entity_list = node_to_del->next;
+            last_ent_node = NULL;
             free(node_to_del);
-        } else if(next_node == NULL){
+        } else if(node_to_del->prev == NULL && node_to_del->next != NULL){
+            *entity_list = node_to_del->next;
+            node_to_del->next->prev = NULL;
+            free(node_to_del);
+        }else if(node_to_del->prev != NULL && node_to_del->next == NULL){
             last_ent_node =  &((*last_ent_node)->prev);
-            prev_node->next = NULL;
+            node_to_del->prev->next = NULL;
             free(node_to_del);
-        }else{
-            last_ent_node = &(prev_node->next);
-            prev_node->next = next_node;
-            next_node->prev = prev_node;
+
+        } else if(node_to_del->prev != NULL && node_to_del->next != NULL){
+            node_to_del->prev->next = node_to_del->next;
+            node_to_del->next->prev = node_to_del->prev;
             free(node_to_del);
         }
     }
@@ -259,12 +473,12 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
     t_ent *orig_ent = is_in_ent(id_orig, *entity_list);
     if(dest_ent != NULL && orig_ent != NULL) {
         t_rel *dest_rel_list = dest_ent->rel_list;
+        t_rel *dest_relation = is_in_rel(id_rel, dest_rel_list);
         t_rel *orig_rel_list = orig_ent->rel_list;
         t_rel *orig_relation = is_in_rel(id_rel, orig_rel_list);
-        t_rel *dest_relation = is_in_rel(id_rel, dest_rel_list);
         if(dest_relation == NULL && dest_ent->last_rel_node == NULL){
             t_rel *new_rel = (t_rel *) malloc(sizeof(t_rel));
-            new_rel->id_rel = id_rel;
+            strcpy(new_rel->id_rel, id_rel);
             new_rel->counter = new_rel->counter + 1;
             new_rel->next = NULL;
             new_rel->prev = NULL;
@@ -276,63 +490,11 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
             dest_ent->rel_list = new_rel;
             dest_ent->last_rel_node = dest_ent->rel_list;
 
-            if(global_rank != NULL){
-                t_rank_rel *rank_rel = is_in_rank(id_rel, global_rank->rank_list);
-                if( rank_rel == NULL){
-                    t_rank_rel *rank = add_rank(id_rel);
-                    rank->counter = new_rel->counter;
-                    rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                    rank->ent_list->ent = dest_ent;
-                    rank->ent_list->next = NULL;
-                    rank->last_node = rank->ent_list;
-                    rank->next = NULL;
-                } else{
-                    if(new_rel->counter > rank_rel->counter){
-                        rank_rel->counter = new_rel->counter;
-                        free(rank_rel->ent_list);
-                        rank_rel->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                        rank_rel->ent_list->ent = dest_ent;
-                        rank_rel->ent_list->next = NULL;
-                        rank_rel->last_node = rank_rel->ent_list;
-                    } else if(new_rel->counter == rank_rel->counter){
-                        if(rank_rel->ent_list == NULL){
-                            t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                            new_ent->ent = dest_ent;
-                            new_ent->next = NULL;
-                            rank_rel->ent_list = new_ent;
-                            rank_rel->last_node = rank_rel->ent_list;
-                        }else {
-                            t_rank_ent *pnt = rank_rel->ent_list;
-                            int is_in = 0;
-                            do {
-                                if (strcmp(pnt->ent->id_ent, id_dest) == 0) {
-                                    is_in = 1;
-                                }
-                                pnt = pnt->next;
-                            } while (pnt != NULL);
-                            if(is_in==0){
-                                t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                                new_ent->ent = dest_ent;
-                                new_ent->next = NULL;
-                                rank_rel->last_node->next = new_ent;
-                                rank_rel->last_node = rank_rel->last_node->next;
-                            }
-                        }
-                    }
-                }
-            } else{
-                t_rank_rel *rank = add_rank(id_rel);
-                rank->id_rel = id_rel;
-                rank->counter = new_rel->counter;
-                rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                rank->ent_list->ent = dest_ent;
-                rank->ent_list->next = NULL;
-                rank->next = NULL;
-            }
+            set_rel_in_global(new_rel, id_dest);
 
         }else if(dest_relation == NULL && dest_ent->last_rel_node != NULL){
             t_rel *new_rel = (t_rel *) malloc(sizeof(t_rel));
-            new_rel->id_rel = id_rel;
+            strcpy(new_rel->id_rel, id_rel);
             new_rel->counter = new_rel->counter + 1;
             new_rel->next = NULL;
             new_rel->prev = dest_ent->last_rel_node;
@@ -344,59 +506,8 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
             dest_ent->last_rel_node->next = new_rel;
             dest_ent->last_rel_node = dest_ent->last_rel_node->next;
 
-            if(global_rank != NULL){
-                t_rank_rel *rank_rel = is_in_rank(id_rel, global_rank->rank_list);
-                if( rank_rel == NULL){
-                    t_rank_rel *rank = add_rank(id_rel);
-                    rank->counter = new_rel->counter;
-                    rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                    rank->ent_list->ent = dest_ent;
-                    rank->ent_list->next = NULL;
-                    rank->last_node = rank->ent_list;
-                    rank->next = NULL;
-                } else{
-                    if(new_rel->counter > rank_rel->counter){
-                        rank_rel->counter = new_rel->counter;
-                        free(rank_rel->ent_list);
-                        rank_rel->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                        rank_rel->ent_list->ent = dest_ent;
-                        rank_rel->ent_list->next = NULL;
-                        rank_rel->last_node = rank_rel->ent_list;
-                    } else if(new_rel->counter == rank_rel->counter){
-                        if(rank_rel->ent_list == NULL){
-                            t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                            new_ent->ent = dest_ent;
-                            new_ent->next = NULL;
-                            rank_rel->ent_list = new_ent;
-                            rank_rel->last_node = rank_rel->ent_list;
-                        }else {
-                            t_rank_ent *pnt = rank_rel->ent_list;
-                            int is_in = 0;
-                            do {
-                                if (strcmp(pnt->ent->id_ent, id_dest) == 0) {
-                                    is_in = 1;
-                                }
-                                pnt = pnt->next;
-                            } while (pnt != NULL);
-                            if(is_in==0){
-                                t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                                new_ent->ent = dest_ent;
-                                new_ent->next = NULL;
-                                rank_rel->last_node->next = new_ent;
-                                rank_rel->last_node = rank_rel->last_node->next;
-                            }
-                        }
-                    }
-                }
-            } else{
-                t_rank_rel *rank = add_rank(id_rel);
-                rank->id_rel = id_rel;
-                rank->counter = new_rel->counter;
-                rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                rank->ent_list->ent = dest_ent;
-                rank->ent_list->next = NULL;
-                rank->next = NULL;
-            }
+            set_rel_in_global(new_rel, id_dest);
+
 
         } else if(dest_relation != NULL){
             t_orig *org_list = dest_relation->orig_list;
@@ -419,64 +530,12 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
                 dest_relation->counter = dest_relation->counter + 1;
             }
 
-            if(global_rank != NULL){
-                t_rank_rel *rank_rel = is_in_rank(id_rel, global_rank->rank_list);
-                if( rank_rel == NULL){
-                    t_rank_rel *rank = add_rank(id_rel);
-                    rank->counter = dest_relation->counter;
-                    rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                    rank->ent_list->ent = dest_ent;
-                    rank->ent_list->next = NULL;
-                    rank->last_node = rank->ent_list;
-                    rank->next = NULL;
-                } else{
-                    if(dest_relation->counter > rank_rel->counter){
-                        rank_rel->counter = dest_relation->counter;
-                        free(rank_rel->ent_list);
-                        rank_rel->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                        rank_rel->ent_list->ent = dest_ent;
-                        rank_rel->ent_list->next = NULL;
-                        rank_rel->last_node = rank_rel->ent_list;
-                    } else if(dest_relation->counter == rank_rel->counter){
-                        if(rank_rel->ent_list == NULL){
-                            t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                            new_ent->ent = dest_ent;
-                            new_ent->next = NULL;
-                            rank_rel->ent_list = new_ent;
-                            rank_rel->last_node = rank_rel->ent_list;
-                        }else {
-                            t_rank_ent *pnt = rank_rel->ent_list;
-                            int is_in = 0;
-                            do {
-                                if (strcmp(pnt->ent->id_ent, id_dest) == 0) {
-                                    is_in = 1;
-                                }
-                                pnt = pnt->next;
-                            } while (pnt != NULL);
-                            if(is_in==0){
-                                t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                                new_ent->ent = dest_ent;
-                                new_ent->next = NULL;
-                                rank_rel->last_node->next = new_ent;
-                                rank_rel->last_node = rank_rel->last_node->next;
-                            }
-                        }
-                    }
-                }
-            } else{
-                t_rank_rel *rank = add_rank(id_rel);
-                rank->id_rel = id_rel;
-                rank->counter = dest_relation->counter;
-                rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-                rank->ent_list->ent = dest_ent;
-                rank->ent_list->next = NULL;
-                rank->next = NULL;
-            }
+            set_rel_in_global(dest_relation, id_dest);
 
         }
         if(orig_relation == NULL && orig_ent->last_rel_node == NULL){
             t_rel *new_rel = (t_rel *) malloc(sizeof(t_rel));
-            new_rel->id_rel = id_rel;
+            strcpy(new_rel->id_rel, id_rel);
             new_rel->counter = 0;
             new_rel->next = NULL;
             new_rel->prev = NULL;
@@ -489,7 +548,7 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
             orig_ent->last_rel_node = orig_ent->rel_list;
         }else if(orig_relation == NULL && orig_ent->last_rel_node != NULL){
             t_rel *new_rel = (t_rel *) malloc(sizeof(t_rel));
-            new_rel->id_rel = id_rel;
+            strcpy(new_rel->id_rel, id_rel);
             new_rel->counter = 0;
             new_rel->next = NULL;
             new_rel->prev = orig_ent->last_rel_node;
@@ -570,149 +629,121 @@ void del_rel(char *id_orig, char *id_dest, char *id_rel, t_ent **entity_list ){
                     free(origin);
                 }
                 dest_rel->counter = dest_rel->counter - 1;
+                set_rel_in_global(dest_rel, id_dest);
             }
         }
     }
 }
 
 void report(){
-    t_rank_rel *pnt = global_rank->rank_list;
-    do{
-        if(pnt->ent_list != NULL){
-            printf("%s ", pnt->id_rel);
-            t_rank_ent *ent_list_pnt = pnt->ent_list;
-            do{
-                printf("%s ", ent_list_pnt->ent->id_ent);
-                ent_list_pnt = ent_list_pnt->next;
-            }while (ent_list_pnt != NULL);
-            printf("%d; ", pnt->counter);
-        }
-
-        pnt = pnt->next;
-    }while (pnt != NULL);
+    int max_cnt = 0;
+    char rel_name[STR_DIM];
+    if(global_rel_list != NULL) {
+        t_global_rel *rel_pnt = global_rel_list;
+        do {
+            strcpy(rel_name, rel_pnt->id_rel);
+            t_rel_node *node_pnt = rel_pnt->rel_list;
+            if(node_pnt != NULL) {
+                do {
+                    if (node_pnt->counter > max_cnt) {
+                        max_cnt = node_pnt->counter;
+                    }
+                    node_pnt = node_pnt->next;
+                } while (node_pnt != NULL);
+                node_pnt = rel_pnt->rel_list;
+                if (max_cnt != 0){
+                    printf("%s ", rel_name);
+                    do {
+                        if (node_pnt->counter == max_cnt) {
+                            printf("%s ", node_pnt->id_ent);
+                        }
+                        node_pnt = node_pnt->next;
+                    } while (node_pnt != NULL);
+                    printf("%d; ", max_cnt);
+                }
+            }
+            max_cnt = 0;
+            rel_pnt = rel_pnt->next;
+        } while (rel_pnt != NULL);
+    } else{
+        printf("none");
+    }
+    printf("\n");
 }
 
 int main() {
     t_ent *entity_list = NULL;
 
-    add_ent("Giovanni", &entity_list);
-    add_ent("Luca", &entity_list);
-    add_ent("Sofia", &entity_list);
-    add_ent("Nicola", &entity_list);
-    print_ent(entity_list);
-
-    add_rel("Giovanni", "Luca", "amico_di", &entity_list);
-    add_rel("Nicola", "Luca", "amico_di", &entity_list);
-    add_rel("Sofia", "Luca", "amico_di", &entity_list);
-    add_rel("Giovanni", "Luca", "collega_di", &entity_list);
-    add_rel("Nicola", "Luca", "collega_di", &entity_list);
-    add_rel("Luca", "Giovanni", "amico_di", &entity_list);
-    add_rel("Nicola", "Giovanni", "amico_di", &entity_list);
-    add_rel("Sofia", "Giovanni", "amico_di", &entity_list);
-
-
-    print_all_rel("Luca", entity_list);
-
+/*    add_ent("Elijah_Baley", &entity_list);
+    add_ent("Bentley_Baley", &entity_list);
+    del_ent("Bentley_Baley", &entity_list);
+    add_ent("Jesse_Baley", &entity_list);
+    add_ent("Gladia_Delmarre", &entity_list);
+    add_ent("Han_Fastolfe", &entity_list);
+    add_ent("Vasilia_Aliena", &entity_list);
+    add_ent("R_Daneel_Olivaw", &entity_list);
+    add_ent("R_Giskard_Reventlov", &entity_list);
+    add_ent("Kelden_Amadiro", &entity_list);
+    add_ent("Santirix_Gremionis", &entity_list);
+    add_ent("Rikaine_Delmarre", &entity_list);
     report();
+    add_ent("Jothan_Leebig", &entity_list);
+    add_ent("The_Chairman", &entity_list);
+    add_ent("R_Jander_Panell", &entity_list);
+    add_ent("Hannis_Gruer", &entity_list);
+    add_rel("Elijah_Baley", "Jesse_Baley", "loves", &entity_list);
+    report();
+    add_rel("Gladia_Delmarre", "Elijah_Baley", "loves", &entity_list);
+    add_rel("Rikaine_Delmarre", "Jothan_Leebig", "is_killed_by", &entity_list);
+    add_rel("Jesse_Baley", "Elijah_Baley", "loves", &entity_list);
+    report();*/
 
+/*    add_ent("Giovanni", &entity_list);
+    add_ent("Francesco", &entity_list);
+    add_ent("Luca", &entity_list);
+    add_ent("Marco", &entity_list);
+    add_ent("Sofia", &entity_list);
+
+    add_rel("Sofia", "Giovanni", "amico_di", &entity_list);
+    add_rel("Francesco", "Giovanni", "amico_di", &entity_list);
+
+    del_ent("Francesco", &entity_list);
+    del_ent("Giovanni", &entity_list);
+    del_ent("Luca", &entity_list);
+    del_ent("Marco", &entity_list);
+    del_ent("Sofia", &entity_list);
+
+    add_ent("Francesco", &entity_list);
+
+    add_rel("Francesco", "Giovanni", "amico_di", &entity_list);
+
+    report();*/
+
+    char input[STR_DIM];
+    char ent_name[STR_DIM];
+    char orig_name[STR_DIM];
+    char dest_name[STR_DIM];
+    char rel_id[STR_DIM];
+
+    while(strcmp(input, "end")!=0){
+        if(strcmp(input, "addent")==0){
+            scanf("%s", ent_name);
+            add_ent(ent_name, &entity_list);
+        } else if(strcmp(input, "delent")==0){
+            scanf("%s", ent_name);
+            del_ent(ent_name, &entity_list);
+        } else if(strcmp(input, "addrel")==0){
+            scanf("%s%s%s", orig_name, dest_name, rel_id);
+            add_rel(orig_name, dest_name, rel_id, &entity_list);
+        }else if(strcmp(input, "delrel")==0){
+            scanf("%s%s%s", orig_name, dest_name, rel_id);
+            del_rel(orig_name, dest_name, rel_id, &entity_list);
+        }else if(strcmp(input, "report")==0){
+            report();
+        }
+        scanf("%s", input);
+    }
 
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-if(global_rank != NULL){
-t_rank_rel *rank_rel = is_in_rank(id_rel, global_rank->rank_list);
-if( rank_rel == NULL){
-t_rank_rel *rank = add_rank(id_rel);
-if(new_rel->counter > rank->counter){
-rank->counter = new_rel->counter;
-if(rank->ent_list == NULL){
-rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-rank->ent_list->ent = dest_ent;
-rank->ent_list->next = NULL;
-} else{
-free(rank->ent_list);
-rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-rank->ent_list->ent = dest_ent;
-rank->ent_list->next = NULL;
-}
-} else if(new_rel->counter == rank->counter){
-t_rank_ent *pnt = rank->ent_list;
-rank->ent_list = NULL;
-do{
-t_rank_ent *to_del = pnt;
-free(to_del);
-pnt = pnt->next;
-}while (pnt != NULL);
-t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-new_ent->ent = dest_ent;
-new_ent->next = NULL;
-rank->ent_list = new_ent;
-}
-} else{
-if(new_rel->counter > rank_rel->counter){
-rank_rel->counter = new_rel->counter;
-if(rank_rel->ent_list == NULL){
-rank_rel->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-rank_rel->ent_list->ent = dest_ent;
-rank_rel->ent_list->next = NULL;
-} else{
-t_rank_ent *pnt = rank_rel->ent_list;
-do{
-t_rank_ent *to_del = pnt;
-rank_rel->ent_list = to_del->next;
-free(to_del);
-pnt = pnt->next;
-}while (pnt != NULL);
-rank_rel->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-rank_rel->ent_list->ent = dest_ent;
-rank_rel->ent_list->next = NULL;
-}
-} else if(new_rel->counter == rank_rel->counter){
-t_rank_ent *pnt = rank_rel->ent_list;
-rank_rel->ent_list = NULL;
-do{
-t_rank_ent *to_del = pnt;
-free(to_del);
-pnt = pnt->next;
-}while (pnt != NULL);
-t_rank_ent *new_ent = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-new_ent->ent = dest_ent;
-new_ent->next = NULL;
-rank_rel->ent_list = new_ent;
-}
-}
-} else{
-t_rank_rel *rank = add_rank(id_rel);
-rank->id_rel = id_rel;
-rank->counter = new_rel->counter;
-rank->ent_list = (t_rank_ent *)malloc(sizeof(t_rank_ent));
-rank->ent_list->ent = dest_ent;
-rank->ent_list->next = NULL;
-rank->next = NULL;
-}*/
