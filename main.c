@@ -286,7 +286,7 @@ void dest_sort(t_rel_list *relation){
         if (dest_pnt->counter > max_counter) {
             t_rel_node *dest_to_move = dest_pnt;
             dest_pnt = dest_pnt->next;
-            max_counter = dest_pnt->counter;
+            max_counter = dest_to_move->counter;
             if (dest_to_move->next == NULL) {
                 dest_to_move->prev->next = NULL;
                 relation->last_node = dest_to_move->prev;
@@ -359,21 +359,23 @@ void delete_orig(t_rel_list *relation, t_rel_node *dest, t_ent *orig_to_del) {
     dest->counter = dest->counter - 1;
 
     if (dest->prev == NULL && dest->next != NULL) {
-            if (dest->counter + 1 == dest->next->counter) {
-                dest->next->prev = NULL;
-                relation->node_list = dest->next;
-                dest->prev = relation->last_node;
-                dest->next = NULL;
-                relation->last_node = dest;
-            } else {
-                dest_sort(relation);
-            }
+        if (dest->counter + 1 == dest->next->counter) {
+            dest->next->prev = NULL;
+            relation->node_list = dest->next;
+            dest->prev = relation->last_node;
+            dest->next = NULL;
+            relation->last_node->next = dest;
+            relation->last_node = dest;
+        } else {
+            dest_sort(relation);
+        }
     } else if (dest->counter + 1 == relation->node_list->counter) {
-        if (dest->next != NULL) {
+        if (dest->next != NULL && dest->next->counter == dest->counter+1) {
             dest->prev->next = dest->next;
             dest->next->prev = dest->prev;
             dest->prev = relation->last_node;
             dest->next = NULL;
+            relation->last_node->next = dest;
             relation->last_node = dest;
         }
     }
@@ -414,14 +416,8 @@ void del_ent(char *id_ent) {
                                 rel_pnt->node_list = NULL;
                                 rel_pnt->last_node = NULL;
                             } else if (dest_pnt->prev == NULL && dest_pnt->next != NULL) {
-                                if(dest_pnt->counter == dest_pnt->next->counter){
-                                    dest_pnt->next->prev = NULL;
-                                    rel_pnt->node_list = dest_pnt->next;
-                                } else{
-                                    dest_pnt->next->prev = NULL;
-                                    rel_pnt->node_list = dest_pnt->next;
-                                    dest_sort(rel_pnt);
-                                }
+                                dest_pnt->next->prev = NULL;
+                                rel_pnt->node_list = dest_pnt->next;
                             } else if (dest_pnt->prev != NULL && dest_pnt->next == NULL) {
                                 dest_pnt->prev->next = NULL;
                                 rel_pnt->last_node = dest_pnt->prev;
@@ -433,12 +429,29 @@ void del_ent(char *id_ent) {
                         } else {
                             t_ent *orig = is_in_orig(id_ent, dest_pnt->orig_list);
                             if (orig != NULL) {
-                                delete_orig(rel_pnt, dest_pnt, orig);
+                                if (orig->prev != NULL && orig->next != NULL) {
+                                    orig->prev->next = orig->next;
+                                    orig->next->prev = orig->prev;
+                                } else if (orig->prev == NULL && orig->next != NULL) {
+                                    orig->next->prev = NULL;
+                                    dest_pnt->orig_list = orig->next;
+                                } else if (orig->prev != NULL && orig->next == NULL) {
+                                    orig->prev->next = NULL;
+                                    dest_pnt->last_orig = orig->prev;
+                                } else if (orig->prev == NULL && orig->next == NULL) {
+                                    dest_pnt->orig_list = NULL;
+                                    dest_pnt->last_orig = NULL;
+                                }
+                                free(orig);
+                                dest_pnt->counter = dest_pnt->counter - 1;
                             }
                         }
                         dest_pnt = dest_pnt->next;
                     } while (dest_pnt != NULL);
                 }
+                if(rel_pnt->node_list != NULL){
+                    dest_sort(rel_pnt);
+                };
                 rel_pnt = rel_pnt->next;
             } while (rel_pnt != NULL);
         }
