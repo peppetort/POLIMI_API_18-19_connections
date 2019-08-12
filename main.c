@@ -715,12 +715,14 @@ void report() {
             if (rel_pnt->dest_list != NULL) {
                 if (rel_pnt->dest_list->counter != 0) {
                     if (rel_pnt->prev != NULL && prev_max_counter != 0) {
-                        printf(" ");
+                        fputs(" ", stdout);
                     }
-                    printf("%s ", rel_pnt->id_rel);
+                    fputs(rel_pnt->id_rel, stdout);
+                    fputs(" ", stdout);
                     t_dest *dest_pnt = rel_pnt->dest_list;
                     do {
-                        printf("%s ", dest_pnt->id_dest);
+                        fputs(dest_pnt->id_dest, stdout);
+                        fputs(" ", stdout);
                         dest_pnt = dest_pnt->next;
                     } while (dest_pnt != NULL && dest_pnt->counter == rel_pnt->dest_list->counter);
                     printf("%d;", rel_pnt->dest_list->counter);
@@ -730,15 +732,18 @@ void report() {
             rel_pnt = rel_pnt->next;
         } while (rel_pnt != NULL);
     } else {
-        printf("none");
+        fputs("none", stdout);
     }
-    printf("\n");
+    fputs("\n", stdout);
 }
 
 int main() {
 
     ent_nil = (t_ent *)malloc(sizeof(t_ent));
     ent_nil->color = BLACK;
+    ent_nil->right = ent_nil;
+    ent_nil->left = ent_nil;
+    ent_nil->p = ent_nil;
     ent_root = ent_nil;
 
     char input[STR_DIM];
