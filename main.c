@@ -95,22 +95,23 @@ t_ent *ent_left_rotate(t_ent *root, t_ent *x) {
     return root;
 }
 
-t_ent *ent_right_rotate(t_ent *root, t_ent *y) {
-    t_ent *x = y->left;
-    y->left = x->right;
-    if (x->right != ent_nil) {
-        x->right->p = y;
+t_ent *ent_right_rotate(t_ent *root, t_ent *x) {
+    t_ent *y = x->left;
+    x->left = y->right;
+
+    if (y->right != ent_nil) {
+        y->right->p = x;
     }
-    x->p = y->p;
-    if (y->p == ent_nil) {
-        root = x;
-    } else if (y == y->p->left) {
-        y->p->left = x;
+    y->p = x->p;
+    if (x->p == ent_nil) {
+        root = y;
+    } else if (x == x->p->right) {
+        x->p->right = y;
     } else {
-        y->p->right = x;
+        x->p->left = y;
     }
-    x->right = y;
-    y->p = x;
+    y->right = x;
+    x->p = y;
     return root;
 }
 
@@ -166,7 +167,7 @@ t_ent *insert_ent(t_ent *root, char *id_ent) {
     while (x != ent_nil) {
         y = x;
         if (strcmp(id_ent, x->id_ent) == 0) {
-            return root;
+            return NULL;
         } else if (strcmp(id_ent, x->id_ent) < 0) {
             x = x->left;
         } else {
@@ -373,8 +374,13 @@ t_dest *insert_dest(t_rel *relation, char *id_dest) {
 
 void insert_orig(t_rel *relation, t_dest *dest, char *id_orig) {
 
-    dest->orig_root = insert_ent(dest->orig_root, id_orig);
-    dest->counter++;
+    t_ent *tmp = insert_ent(dest->orig_root, id_orig);
+    if(tmp == NULL){
+        return;
+    }
+        dest->orig_root = tmp;
+        dest->counter++;
+
 
     if (dest->prev != NULL && (dest->prev->counter != dest->counter || (dest->prev->counter == dest->counter &&
                                                                         strcmp(dest->prev->id_dest, dest->id_dest) >
@@ -516,79 +522,13 @@ void delete_orig(t_rel *relation, t_dest *dest, t_ent *orig_to_del) {
     }
 }
 
-/*int double_ent_search(char *id_dest, char *id_orig) {
-    int dest_found = 0;
-    int orig_found = 0;
-    t_ent *pnt_to_dest = ent_root;
-    t_ent *pnt_to_orig = ent_root;
-    while () {
-        if (pnt_to_dest == NULL && pnt_to_orig != NULL) {
-            if (orig_found == 0) {
-                if (strcmp(pnt_to_orig->id_ent, id_orig) == 0) {
-                    orig_found = 1;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) < 0) {
-                    pnt_to_orig = pnt_to_orig->right;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) > 0) {
-                    pnt_to_orig = pnt_to_orig->left;
-                }
-            }
-        } else if (pnt_to_dest != NULL && pnt_to_orig == NULL) {
-            if (dest_found == 0) {
-                if (strcmp(pnt_to_dest->id_ent, id_dest) == 0) {
-                    dest_found = 1;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) < 0) {
-                    pnt_to_dest = pnt_to_dest->right;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) > 0) {
-                    pnt_to_dest = pnt_to_dest->left;
-                }
-            }
-        } else if (pnt_to_dest == NULL && pnt_to_orig == NULL) {
-            if (dest_found == 1 && orig_found == 0) {
-                if (strcmp(pnt_to_orig->id_ent, id_orig) == 0) {
-                    orig_found = 1;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) < 0) {
-                    pnt_to_orig = pnt_to_orig->right;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) > 0) {
-                    pnt_to_orig = pnt_to_orig->left;
-                }
-            } else if (dest_found == 0 && orig_found == 1) {
-                if (strcmp(pnt_to_dest->id_ent, id_dest) == 0) {
-                    dest_found = 1;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) < 0) {
-                    pnt_to_dest = pnt_to_dest->right;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) > 0) {
-                    pnt_to_dest = pnt_to_dest->left;
-                }
-            } else {
-                if (strcmp(pnt_to_dest->id_ent, id_dest) == 0) {
-                    dest_found = 1;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) < 0) {
-                    pnt_to_dest = pnt_to_dest->right;
-                } else if (strcmp(pnt_to_dest->id_ent, id_dest) > 0) {
-                    pnt_to_dest = pnt_to_dest->left;
-                }
-
-                if (strcmp(pnt_to_orig->id_ent, id_orig) == 0) {
-                    orig_found = 1;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) < 0) {
-                    pnt_to_orig = pnt_to_orig->right;
-                } else if (strcmp(pnt_to_orig->id_ent, id_orig) > 0) {
-                    pnt_to_orig = pnt_to_orig->left;
-                }
-            }
-        }
-    }
-    if (dest_found == 1 && orig_found == 1) {
-        return 1;
-    } else {
-        return 0;
-    }
-}*/
-
 // REQUIRED FUNCTIONS
 
 void add_ent(char *id_ent) {
-    ent_root = insert_ent(ent_root, id_ent);
+    t_ent *tmp = insert_ent(ent_root, id_ent);
+    if(tmp != NULL){
+        ent_root = tmp;
+    }
 }
 
 void del_ent(char *id_ent) {
@@ -614,15 +554,17 @@ void del_ent(char *id_ent) {
                                 dest_pnt->prev->next = dest_pnt->next;
                                 dest_pnt->next->prev = dest_pnt->prev;
                             }
-                            free(dest_pnt);
+                            t_dest *to_del = dest_pnt;
+                            dest_pnt = dest_pnt->next;
+                            free(to_del);
                         } else {
                             t_ent *orig = is_in_ent(dest_pnt->orig_root, id_ent);
                             if (orig != ent_nil) {
                                 dest_pnt->orig_root = delete_ent(dest_pnt->orig_root, orig);
                                 dest_pnt->counter = dest_pnt->counter - 1;
                             }
+                            dest_pnt = dest_pnt->next;
                         }
-                        dest_pnt = dest_pnt->next;
                     } while (dest_pnt != NULL);
                 }
                 if (rel_pnt->dest_list != NULL) {
@@ -741,6 +683,7 @@ int main() {
 
     ent_nil = (t_ent *)malloc(sizeof(t_ent));
     ent_nil->color = BLACK;
+    strcpy(ent_nil->id_ent, "");
     ent_nil->right = ent_nil;
     ent_nil->left = ent_nil;
     ent_nil->p = ent_nil;
@@ -751,6 +694,8 @@ int main() {
     char orig_name[STR_DIM];
     char dest_name[STR_DIM];
     char rel_id[STR_DIM];
+
+    scanf("%s", input);
 
     while (strcmp(input, "end") != 0) {
         if (strcmp(input, "addent") == 0) {
