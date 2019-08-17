@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STR_DIM 35
+#define STR_DIM 50
 #define RED 0
 #define BLACK 1
 
@@ -270,7 +270,8 @@ t_ent *delete_ent(t_ent *root, t_ent *z) {
     if ( y->color == BLACK) {
         root = ent_delete_fixup(root, x);
     }
-    free(y);
+    t_ent *to_del = y;
+    free(to_del);
     return root;
 }
 
