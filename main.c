@@ -23,6 +23,7 @@ struct dest_tree {
     char id_dest[STR_DIM];
     int counter;
     t_ent *orig_root;
+    t_ent *orig_nil;
     struct dest_tree *next;
     struct dest_tree *prev;
 };
@@ -75,7 +76,7 @@ t_ent *ent_successor(t_ent *x) {
     return y;
 }
 
-t_ent *ent_left_rotate(t_ent *root, t_ent *x) {
+void ent_left_rotate(t_ent *x) {
     t_ent *y = x->right;
     x->right = y->left;
 
@@ -84,7 +85,7 @@ t_ent *ent_left_rotate(t_ent *root, t_ent *x) {
     }
     y->p = x->p;
     if (x->p == ent_nil) {
-        root = y;
+        ent_root = y;
     } else if (x == x->p->left) {
         x->p->left = y;
     } else {
@@ -92,10 +93,9 @@ t_ent *ent_left_rotate(t_ent *root, t_ent *x) {
     }
     y->left = x;
     x->p = y;
-    return root;
 }
 
-t_ent *ent_right_rotate(t_ent *root, t_ent *x) {
+void ent_right_rotate(t_ent *x) {
     t_ent *y = x->left;
     x->left = y->right;
 
@@ -104,7 +104,7 @@ t_ent *ent_right_rotate(t_ent *root, t_ent *x) {
     }
     y->p = x->p;
     if (x->p == ent_nil) {
-        root = y;
+        ent_root = y;
     } else if (x == x->p->right) {
         x->p->right = y;
     } else {
@@ -112,12 +112,11 @@ t_ent *ent_right_rotate(t_ent *root, t_ent *x) {
     }
     y->right = x;
     x->p = y;
-    return root;
 }
 
-t_ent *ent_insert_fixup(t_ent *root, t_ent *z) {
-    if (z == root) {
-        root->color = BLACK;
+void ent_insert_fixup(t_ent *z) {
+    if (z == ent_root) {
+        ent_root->color = BLACK;
     } else {
         t_ent *x = z->p;
         if (x->color == RED) {
@@ -127,16 +126,16 @@ t_ent *ent_insert_fixup(t_ent *root, t_ent *z) {
                     x->color = BLACK;
                     y->color = BLACK;
                     x->p->color = RED;
-                    root = ent_insert_fixup(root, x->p);
+                    ent_insert_fixup(x->p);
                 } else {
                     if (z == x->right) {
                         z = x;
-                        root = ent_left_rotate(root, z);
+                        ent_left_rotate(z);
                         x = z->p;
                     }
                     x->color = BLACK;
                     x->p->color = RED;
-                    root = ent_right_rotate(root, x->p);
+                    ent_right_rotate(x->p);
                 }
             } else {
                 t_ent *y = x->p->left;
@@ -144,30 +143,29 @@ t_ent *ent_insert_fixup(t_ent *root, t_ent *z) {
                     x->color = BLACK;
                     y->color = BLACK;
                     x->p->color = RED;
-                    root = ent_insert_fixup(root, x->p);
+                    ent_insert_fixup(x->p);
                 } else {
                     if (z == x->left) {
                         z = x;
-                        root = ent_right_rotate(root, z);
+                        ent_right_rotate(z);
                         x = z->p;
                     }
                     x->color = BLACK;
                     x->p->color = RED;
-                    root = ent_left_rotate(root, x->p);
+                    ent_left_rotate(x->p);
                 }
             }
         }
     }
-    return root;
 }
 
-t_ent *insert_ent(t_ent *root, char *id_ent) {
+void insert_ent(char *id_ent) {
     t_ent *y = ent_nil;
-    t_ent *x = root;
+    t_ent *x = ent_root;
     while (x != ent_nil) {
         y = x;
         if (strcmp(id_ent, x->id_ent) == 0) {
-            return NULL;
+            return;
         } else if (strcmp(id_ent, x->id_ent) < 0) {
             x = x->left;
         } else {
@@ -178,7 +176,7 @@ t_ent *insert_ent(t_ent *root, char *id_ent) {
     strcpy(z->id_ent, id_ent);
     z->p = y;
     if (y == ent_nil) {
-        root = z;
+        ent_root = z;
     } else if (strcmp(z->id_ent, y->id_ent) < 0) {
         y->left = z;
     } else {
@@ -187,10 +185,10 @@ t_ent *insert_ent(t_ent *root, char *id_ent) {
     z->left = ent_nil;
     z->right = ent_nil;
     z->color = RED;
-    return ent_insert_fixup(root, z);
+    ent_insert_fixup(z);
 }
 
-t_ent *ent_delete_fixup(t_ent *root, t_ent *x) {
+void ent_delete_fixup(t_ent *x) {
     t_ent *w;
     if (x->color == RED || x->p == ent_nil) {
         x->color = BLACK;
@@ -199,52 +197,51 @@ t_ent *ent_delete_fixup(t_ent *root, t_ent *x) {
             if (w->color == RED) {
                 w->color = BLACK;
                 x->p->color = RED;
-                root = ent_left_rotate(root, x->p);
+                ent_left_rotate(x->p);
                 w = x->p->right;
             }
             if (w->left->color == BLACK && w->right->color == BLACK) {
                 w->color = RED;
-                root = ent_delete_fixup(root, x->p);
+                ent_delete_fixup(x->p);
             } else {
                 if (w->right->color == BLACK) {
                     w->left->color = BLACK;
                     w->color = RED;
-                    root = ent_right_rotate(root, w);
+                    ent_right_rotate(w);
                     w = w->p->right;
                 }
                 w->color = x->p->color;
                 x->p->color = BLACK;
                 w->right->color = BLACK;
-                root = ent_left_rotate(root, x->p);
+                ent_left_rotate(x->p);
             }
     } else {
         w = x->p->left;
         if (w->color == RED) {
             w->color = BLACK;
             x->p->color = RED;
-            root = ent_right_rotate(root, x->p);
+            ent_right_rotate(x->p);
             w = x->p->left;
         }
         if (w->left->color == BLACK && w->right->color == BLACK) {
             w->color = RED;
-            root = ent_delete_fixup(root, x->p);
+            ent_delete_fixup(x->p);
         } else {
             if (w->left->color == BLACK) {
                 w->right->color = BLACK;
                 w->color = RED;
-                root = ent_left_rotate(root, w);
+                ent_left_rotate(w);
                 w = w->p->left;
             }
             w->color = x->p->color;
             x->p->color = BLACK;
             w->left->color = BLACK;
-            root = ent_right_rotate(root, x->p);
+            ent_right_rotate(x->p);
         }
     }
-    return root;
 }
 
-t_ent *delete_ent(t_ent *root, t_ent *z) {
+void delete_ent(t_ent *z) {
     t_ent *y, *x;
     if (z->left == ent_nil || z->right == ent_nil) {
         y = z;
@@ -258,7 +255,7 @@ t_ent *delete_ent(t_ent *root, t_ent *z) {
     }
     x->p = y->p;
     if (y->p == ent_nil) {
-        root = x;
+        ent_root = x;
     } else if (y == y->p->left) {
         y->p->left = x;
     } else {
@@ -268,11 +265,9 @@ t_ent *delete_ent(t_ent *root, t_ent *z) {
         strcpy(z->id_ent, y->id_ent);
     }
     if ( y->color == BLACK) {
-        root = ent_delete_fixup(root, x);
+        ent_delete_fixup(x);
     }
-    t_ent *to_del = y;
-    free(to_del);
-    return root;
+    free(y);
 }
 
 t_ent *is_in_ent(t_ent *x, char *id_ent) {
@@ -285,6 +280,235 @@ t_ent *is_in_ent(t_ent *x, char *id_ent) {
         return is_in_ent(x->right, id_ent);
     }
 }
+
+
+t_ent *orig_minimum(t_dest *dest, t_ent *x) {
+    while (x->left != dest->orig_nil) {
+        x = x->left;
+    }
+    return x;
+}
+
+t_ent *orig_successor(t_dest *dest, t_ent *x) {
+    if (x->right != dest->orig_nil) {
+        return orig_minimum(dest, x->right);
+    }
+    t_ent *y = x->p;
+    while (y != dest->orig_nil && x == y->right) {
+        x = y;
+        y = y->p;
+    }
+    return y;
+}
+
+void orig_left_rotate(t_dest *dest, t_ent *x) {
+    t_ent *y = x->right;
+    x->right = y->left;
+
+    if (y->left != dest->orig_nil) {
+        y->left->p = x;
+    }
+    y->p = x->p;
+    if (x->p == dest->orig_nil) {
+        dest->orig_root = y;
+    } else if (x == x->p->left) {
+        x->p->left = y;
+    } else {
+        x->p->right = y;
+    }
+    y->left = x;
+    x->p = y;
+}
+
+void orig_right_rotate(t_dest *dest, t_ent *x) {
+    t_ent *y = x->left;
+    x->left = y->right;
+
+    if (y->right != dest->orig_nil) {
+        y->right->p = x;
+    }
+    y->p = x->p;
+    if (x->p == dest->orig_nil) {
+        dest->orig_root = y;
+    } else if (x == x->p->right) {
+        x->p->right = y;
+    } else {
+        x->p->left = y;
+    }
+    y->right = x;
+    x->p = y;
+}
+
+void orig_insert_fixup(t_dest *dest, t_ent *z) {
+    if (z == dest->orig_root) {
+        dest->orig_root->color = BLACK;
+    } else {
+        t_ent *x = z->p;
+        if (x->color == RED) {
+            if (x == x->p->left) {
+                t_ent *y = x->p->right;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color = RED;
+                    orig_insert_fixup(dest, x->p);
+                } else {
+                    if (z == x->right) {
+                        z = x;
+                        orig_left_rotate(dest, z);
+                        x = z->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    orig_right_rotate(dest, x->p);
+                }
+            } else {
+                t_ent *y = x->p->left;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color = RED;
+                    orig_insert_fixup(dest, x->p);
+                } else {
+                    if (z == x->left) {
+                        z = x;
+                        orig_right_rotate(dest, z);
+                        x = z->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    orig_left_rotate(dest, x->p);
+                }
+            }
+        }
+    }
+}
+
+int ins_orig(t_dest *dest, char *id_ent) {
+    t_ent *y = dest->orig_nil;
+    t_ent *x = dest->orig_root;
+    while (x != dest->orig_nil) {
+        y = x;
+        if (strcmp(id_ent, x->id_ent) == 0) {
+            return 1;
+        } else if (strcmp(id_ent, x->id_ent) < 0) {
+            x = x->left;
+        } else {
+            x = x->right;
+        }
+    }
+    t_ent *z = (t_ent *) malloc(sizeof(t_ent));
+    strcpy(z->id_ent, id_ent);
+    z->p = y;
+    if (y == dest->orig_nil) {
+        dest->orig_root = z;
+    } else if (strcmp(z->id_ent, y->id_ent) < 0) {
+        y->left = z;
+    } else {
+        y->right = z;
+    }
+    z->left = dest->orig_nil;
+    z->right = dest->orig_nil;
+    z->color = RED;
+    orig_insert_fixup(dest, z);
+    return 0;
+}
+
+void orig_delete_fixup(t_dest *dest, t_ent *x) {
+    t_ent *w;
+    if (x->color == RED || x->p == dest->orig_nil) {
+        x->color = BLACK;
+    } else if (x == x->p->left) {
+        w = x->p->right;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            orig_left_rotate(dest, x->p);
+            w = x->p->right;
+        }
+        if (w->left->color == BLACK && w->right->color == BLACK) {
+            w->color = RED;
+            orig_delete_fixup(dest, x->p);
+        } else {
+            if (w->right->color == BLACK) {
+                w->left->color = BLACK;
+                w->color = RED;
+                orig_right_rotate(dest, w);
+                w = w->p->right;
+            }
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->right->color = BLACK;
+            orig_left_rotate(dest, x->p);
+        }
+    } else {
+        w = x->p->left;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            orig_right_rotate(dest, x->p);
+            w = x->p->left;
+        }
+        if (w->left->color == BLACK && w->right->color == BLACK) {
+            w->color = RED;
+            orig_delete_fixup(dest, x->p);
+        } else {
+            if (w->left->color == BLACK) {
+                w->right->color = BLACK;
+                w->color = RED;
+                orig_left_rotate(dest, w);
+                w = w->p->left;
+            }
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->left->color = BLACK;
+            orig_right_rotate(dest, x->p);
+        }
+    }
+}
+
+void del_orig(t_dest *dest, t_ent *z) {
+    t_ent *y, *x;
+    if (z->left == dest->orig_nil || z->right == dest->orig_nil) {
+        y = z;
+    } else {
+        y = orig_successor(dest, z);
+    }
+    if (y->left != dest->orig_nil) {
+        x = y->left;
+    } else {
+        x = y->right;
+    }
+    x->p = y->p;
+    if (y->p == dest->orig_nil) {
+        dest->orig_root = x;
+    } else if (y == y->p->left) {
+        y->p->left = x;
+    } else {
+        y->p->right = x;
+    }
+    if (y != z) {
+        strcpy(z->id_ent, y->id_ent);
+    }
+    if ( y->color == BLACK) {
+        orig_delete_fixup(dest, x);
+    }
+    free(y);
+}
+
+t_ent *is_in_orig(t_dest *dest, t_ent *x, char *id_ent) {
+    if (x == dest->orig_nil || strcmp(id_ent, x->id_ent) == 0) {
+        return x;
+    }
+    if (strcmp(id_ent, x->id_ent) < 0) {
+        return is_in_orig(dest, x->left, id_ent);
+    } else {
+        return is_in_orig(dest, x->right, id_ent);
+    }
+}
+
+
+
 
 t_rel *insert_rel(char *id_rel, t_rel *prev, t_rel *next) {
     t_rel *new_rel = (t_rel *) malloc(sizeof(t_rel));
@@ -358,7 +582,13 @@ t_dest *insert_dest(t_rel *relation, char *id_dest) {
     t_dest *new_dest = (t_dest *) malloc(sizeof(t_dest));
     strcpy(new_dest->id_dest, id_dest);
     new_dest->counter = 0;
-    new_dest->orig_root = ent_nil;
+    new_dest->orig_nil = (t_ent *)malloc(sizeof(t_ent));
+    new_dest->orig_nil->color = BLACK;
+    new_dest->orig_nil->left = new_dest->orig_nil;
+    new_dest->orig_nil->right = new_dest->orig_nil;
+    new_dest->orig_nil->p = new_dest->orig_nil;
+    strcpy(new_dest->orig_nil->id_ent, "");
+    new_dest->orig_root = new_dest->orig_nil;
     if (relation->last_dest == NULL) {
         new_dest->prev = NULL;
         new_dest->next = NULL;
@@ -375,11 +605,10 @@ t_dest *insert_dest(t_rel *relation, char *id_dest) {
 
 void insert_orig(t_rel *relation, t_dest *dest, char *id_orig) {
 
-    t_ent *tmp = insert_ent(dest->orig_root, id_orig);
-    if(tmp == NULL){
+    int tmp = ins_orig(dest, id_orig);
+    if(tmp == 1){
         return;
     }
-        dest->orig_root = tmp;
         dest->counter++;
 
 
@@ -497,7 +726,7 @@ void dest_sort(t_rel *relation) {
 
 void delete_orig(t_rel *relation, t_dest *dest, t_ent *orig_to_del) {
 
-    dest->orig_root = delete_ent(dest->orig_root, orig_to_del);
+    del_orig(dest, orig_to_del);
     dest->counter = dest->counter - 1;
 
     if (dest->prev == NULL && dest->next != NULL) {
@@ -525,11 +754,9 @@ void delete_orig(t_rel *relation, t_dest *dest, t_ent *orig_to_del) {
 
 // REQUIRED FUNCTIONS
 
+
 void add_ent(char *id_ent) {
-    t_ent *tmp = insert_ent(ent_root, id_ent);
-    if(tmp != NULL){
-        ent_root = tmp;
-    }
+    insert_ent(id_ent);
 }
 
 void del_ent(char *id_ent) {
@@ -559,9 +786,9 @@ void del_ent(char *id_ent) {
                             dest_pnt = dest_pnt->next;
                             free(to_del);
                         } else {
-                            t_ent *orig = is_in_ent(dest_pnt->orig_root, id_ent);
-                            if (orig != ent_nil) {
-                                dest_pnt->orig_root = delete_ent(dest_pnt->orig_root, orig);
+                            t_ent *orig = is_in_orig(dest_pnt, dest_pnt->orig_root, id_ent);
+                            if (orig != dest_pnt->orig_nil) {
+                                del_orig(dest_pnt, orig);
                                 dest_pnt->counter = dest_pnt->counter - 1;
                             }
                             dest_pnt = dest_pnt->next;
@@ -570,12 +797,11 @@ void del_ent(char *id_ent) {
                 }
                 if (rel_pnt->dest_list != NULL) {
                     dest_sort(rel_pnt);
-                };
+                }
                 rel_pnt = rel_pnt->next;
             } while (rel_pnt != NULL);
         }
-
-        ent_root = delete_ent(ent_root, ent_to_del);
+        delete_ent(ent_to_del);
     }
 }
 
@@ -597,7 +823,7 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel) {
                     insert_orig(last_rel, new_dest, id_orig);
                 } else {
                     //DESTINAZIONE: presente -> controllare origini
-                    if (is_in_ent(dest->orig_root, id_orig) == ent_nil) {
+                    if (is_in_orig(dest, dest->orig_root, id_orig) == dest->orig_nil) {
                         insert_orig(last_rel, dest, id_orig);
                     }
                 }
@@ -622,7 +848,7 @@ void add_rel(char *id_orig, char *id_dest, char *id_rel) {
                         insert_orig(next_rel->prev, new_dest, id_orig);
                     } else {
                         //DESTINAZIONE: presente -> controllare origini
-                        if (is_in_ent(dest->orig_root, id_orig) == ent_nil) {
+                        if (is_in_orig(dest, dest->orig_root, id_orig) == dest->orig_nil) {
                             insert_orig(next_rel->prev, dest, id_orig);
                         }
                     }
@@ -642,8 +868,8 @@ void del_rel(char *id_orig, char *id_dest, char *id_rel) {
     if (relation != NULL) {
         t_dest *dest = is_in_dest(id_dest, relation->dest_list);
         if (dest != NULL) {
-            t_ent *orig = is_in_ent(dest->orig_root, id_orig);
-            if (orig != ent_nil) {
+            t_ent *orig = is_in_orig(dest, dest->orig_root, id_orig);
+            if (orig != dest->orig_nil) {
                 delete_orig(relation, dest, orig);
             }
         }
@@ -684,7 +910,7 @@ int main() {
 
     ent_nil = (t_ent *)malloc(sizeof(t_ent));
     ent_nil->color = BLACK;
-    strcpy(ent_nil->id_ent, "");
+    strcpy(ent_nil->id_ent, " ");
     ent_nil->right = ent_nil;
     ent_nil->left = ent_nil;
     ent_nil->p = ent_nil;
